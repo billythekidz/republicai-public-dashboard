@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RepublicAI Public Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <header>
+    <h1>⚡ RepublicAI Public Dashboard <span id="dash-version" style="font-size:0.5em;opacity:0.6">v1.0.0</span></h1>
+    <div id="health-bar">
+      <span id="block-height" class="badge">Block: —</span>
+      <span id="sync-status" class="badge">Sync: —</span>
+      <span id="peer-count" class="badge">Peers: —</span>
+      <span id="val-status" class="badge">Status: —</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="sidebar">
+      <div class="group" data-group="status">
+        <h3>📊 Status</h3>
+        <button data-cmd="status" class="auto-refresh">🟢 Node Status</button>
+        <button data-cmd="services">⚙️ Services</button>
+        <button data-cmd="delegations">🤝 Delegations</button>
+        <button data-cmd="validators">📊 Validators</button>
+        <button data-cmd="peers">🌐 Peers</button>
+      </div>
+
+      <div class="group" data-group="jobs">
+        <h3>💼 Jobs</h3>
+        <button data-cmd="all-jobs">📜 All Jobs</button>
+        <input type="text" id="job-id-input" placeholder="Job ID or TX hash" style="width:100%;margin-bottom:4px">
+        <button data-cmd="query-job" data-args-from="job-id-input">🔍 Query Job</button>
+      </div>
+    </div>
+
+    <div id="output-panel">
+      <div id="output-header">
+        <span id="output-title">Output</span>
+        <span id="output-spinner" class="hidden">⏳ Running...</span>
+        <button id="copy-log-btn" onclick="copyLog()" title="Copy output to clipboard">Copy</button>
+        <div style="flex:1"></div>
+        <button id="clear-btn" onclick="clearOutput()">Clear</button>
+      </div>
+      <pre id="output"></pre>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
