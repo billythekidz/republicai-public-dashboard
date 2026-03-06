@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Show staking delegations for this validator."""
+"""Show staking delegations — PUBLIC version (masked addresses)."""
 import json, os, subprocess, sys
 
 def run(cmd, timeout=15):
@@ -8,6 +8,12 @@ def run(cmd, timeout=15):
         return r.stdout.strip() or r.stderr.strip()
     except:
         return ""
+
+def mask(addr):
+    """Mask address: rai1abc...xyz"""
+    if not addr or len(addr) < 12:
+        return "***"
+    return addr[:6] + "..." + addr[-4:]
 
 def main():
     valoper = os.environ.get("WALLET_VALOPER", "")
@@ -19,7 +25,7 @@ def main():
     if not valoper:
         valoper = run(f"republicd keys show {wname} --bech val -a --home {home} --keyring-backend {kb}")
 
-    print(f"Valoper: {valoper}")
+    print(f"Validator: {mask(valoper)}")
     print()
 
     # Validator info
@@ -37,7 +43,7 @@ def main():
         except Exception as e:
             print(f"Error parsing validator: {e}")
 
-    # Delegations
+    # Delegations (masked addresses)
     del_raw = run(f"republicd query staking delegations-to {valoper} --node {rpc} -o json", timeout=30)
     if del_raw:
         try:
@@ -48,7 +54,7 @@ def main():
             for r in delegations:
                 addr = r["delegation"]["delegator_address"]
                 shares = float(r["delegation"]["shares"]) / 1e18
-                print(f"  {addr} -> {shares:.2f} RAI")
+                print(f"  {mask(addr)} -> {shares:.2f} RAI")
         except Exception as e:
             print(f"Error parsing delegations: {e}")
     else:

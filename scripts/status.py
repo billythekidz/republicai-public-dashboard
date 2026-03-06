@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Node health for dashboard header."""
+"""Node health for PUBLIC dashboard — no personal identifiers."""
 import json, os, subprocess, sys, urllib.request
 
 def run(cmd, timeout=15):
@@ -15,6 +15,12 @@ def http_get(url, timeout=5):
             return json.loads(resp.read())
     except:
         return {}
+
+def mask(addr):
+    """Mask address: rai1abc...xyz"""
+    if not addr or len(addr) < 12:
+        return "***"
+    return addr[:6] + "..." + addr[-4:]
 
 def main():
     valoper = os.environ.get("WALLET_VALOPER", "")
@@ -53,37 +59,23 @@ def main():
         except:
             pass
 
-    # Balance
-    bal_raw = run(f"republicd query bank balances {wallet} --node {rpc} -o json")
-    balance = "0"
-    if bal_raw:
-        try:
-            for b in json.loads(bal_raw).get("balances", []):
-                if b.get("denom") == "arai":
-                    balance = b["amount"]
-        except:
-            pass
-
     tokens_rai = f"{int(tokens)/1e18:.2f}" if tokens.isdigit() else "?"
-    balance_rai = f"{int(balance)/1e18:.2f}" if balance.isdigit() else "?"
 
+    # Public output — NO wallet, NO valoper, NO balance
     print("=== Node Health ===")
-    print(f"  Wallet:    {wallet}")
-    print(f"  Valoper:   {valoper}")
     print(f"  Moniker:   {moniker}")
     print(f"  Status:    {val_status}")
     print(f"  Jailed:    {jailed}")
     print(f"  Staked:    {tokens_rai} RAI")
-    print(f"  Liquid:    {balance_rai} RAI")
     print(f"  Block:     {block}")
     print(f"  Syncing:   {syncing}")
     print(f"  Peers:     {peers}")
     print()
     print("JSON_START")
     print(json.dumps({
-        "wallet": wallet, "valoper": valoper, "moniker": moniker,
+        "moniker": moniker,
         "status": val_status, "jailed": jailed == "true",
-        "tokens": tokens, "balance": balance,
+        "tokens": tokens,
         "block": str(block), "syncing": syncing, "peers": str(peers)
     }))
 
