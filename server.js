@@ -68,6 +68,20 @@ function runPython(scriptPath, args) {
     return spawn('python3', pyArgs, { env: childEnv() });
 }
 
+// ── HTTP helper for RPC calls ──
+const http = require('http');
+function rpcGet(url) {
+    return new Promise((resolve, reject) => {
+        const req = http.get(url, { timeout: 5000 }, (res) => {
+            let data = '';
+            res.on('data', c => data += c);
+            res.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    });
+}
+
 // Expose SAFE config to frontend (no wallet, no personal info)
 app.get('/api/config', (req, res) => {
     const safe = {
@@ -75,6 +89,33 @@ app.get('/api/config', (req, res) => {
         ports: nodeConfig.ports,
     };
     res.json(safe);
+});
+
+// ── Latest Blocks endpoint (cached 3s) ──
+let blocksCache = { data: null, ts: 0 };
+app.get('/api/blocks', async (req, res) => {
+    const now = Date.now();
+    if (blocksCache.data && now - blocksCache.ts < 3000) {
+        return res.json(blocksCache.data);
+    }
+    try {
+        const rpcHttp = nodeConfig.endpoints?.rpc_http || 'http://localhost:26657';
+        const status = await rpcGet(`${rpcHttp}/status`);
+        const latestHeight = parseInt(status.result.sync_info.latest_block_height);
+        const minHeight = Math.max(1, latestHeight - 19);
+        const blockchain = await rpcGet(`${rpcHttp}/blockchain?minHeight=${minHeight}&maxHeight=${latestHeight}`);
+        const blocks = (blockchain.result.block_metas || []).map(b => ({
+            height: b.header.height,
+            hash: b.block_id.hash,
+            time: b.header.time,
+            num_txs: parseInt(b.num_txs || '0'),
+        }));
+        blocks.sort((a, b) => parseInt(b.height) - parseInt(a.height));
+        blocksCache = { data: blocks, ts: now };
+        res.json(blocks);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // SSE endpoint — streams command output in real-time
