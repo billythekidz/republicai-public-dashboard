@@ -93,17 +93,40 @@ app.get('/api/config', (req, res) => {
 
 // ── Latest Blocks endpoint (cached 3s) ──
 let blocksCache = { data: null, ts: 0 };
+let rpcHttpResolved = null; // cache the working RPC URL
+
+async function tryRpcGet(path) {
+    const candidates = rpcHttpResolved
+        ? [rpcHttpResolved]
+        : [
+            nodeConfig.endpoints?.rpc_http,
+            'http://localhost:26657',
+            'http://localhost:26658',
+        ].filter(Boolean);
+
+    for (const base of candidates) {
+        try {
+            const data = await rpcGet(`${base}${path}`);
+            rpcHttpResolved = base; // cache the working one
+            return data;
+        } catch (e) {
+            if (e.message && (e.message.includes('ECONNREFUSED') || e.message.includes('timeout'))) continue;
+            throw e;
+        }
+    }
+    throw new Error('All RPC endpoints unreachable');
+}
+
 app.get('/api/blocks', async (req, res) => {
     const now = Date.now();
     if (blocksCache.data && now - blocksCache.ts < 3000) {
         return res.json(blocksCache.data);
     }
     try {
-        const rpcHttp = nodeConfig.endpoints?.rpc_http || 'http://localhost:26657';
-        const status = await rpcGet(`${rpcHttp}/status`);
+        const status = await tryRpcGet('/status');
         const latestHeight = parseInt(status.result.sync_info.latest_block_height);
         const minHeight = Math.max(1, latestHeight - 19);
-        const blockchain = await rpcGet(`${rpcHttp}/blockchain?minHeight=${minHeight}&maxHeight=${latestHeight}`);
+        const blockchain = await tryRpcGet(`/blockchain?minHeight=${minHeight}&maxHeight=${latestHeight}`);
         const blocks = (blockchain.result.block_metas || []).map(b => ({
             height: b.header.height,
             hash: b.block_id.hash,
